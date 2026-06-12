@@ -57,15 +57,15 @@
 
 我們已經完成 MVP 的開發，檔案結構如下：
 
-1. **[.env](file:///home/kenny/Git_KennySpace/issue_reviewer/.env)**：預設環境設定檔。
-2. **[.env.example](file:///home/kenny/Git_KennySpace/issue_reviewer/.env.example)**：跨平台設定範本檔（展示 `REPO_PROVIDER` 切換）。
-3. **[config.py](file:///home/kenny/Git_KennySpace/issue_reviewer/config.py)**：負責環境變數的**動態載入（支援自訂檔案路徑）**與自動清理。
-4. **[github_fetcher.py](file:///home/kenny/Git_KennySpace/issue_reviewer/github_fetcher.py)**：GitHub REST API 串接模組。
-5. **[gitlab_fetcher.py](file:///home/kenny/Git_KennySpace/issue_reviewer/gitlab_fetcher.py)**：GitLab REST API 串接模組（採用與 GitHubFetcher 一致的直連設計）。
-6. **[llm_client.py](file:///home/kenny/Git_KennySpace/issue_reviewer/llm_client.py)**：直連 Google Gemini API。
-7. **[analyzer.py](file:///home/kenny/Git_KennySpace/issue_reviewer/analyzer.py)**：Prompts 設計與分析核心。
-8. **[reporter.py](file:///home/kenny/Git_KennySpace/issue_reviewer/reporter.py)**：Markdown 報告渲染與 Webhook 通知發送。
-9. **[main.py](file:///home/kenny/Git_KennySpace/issue_reviewer/main.py)**：主程式入口，支援 `--env <路徑>` 載入。
+1. **[.env](.env)**：預設環境設定檔。
+2. **[.env.example](.env.example)**：跨平台設定範本檔（展示 `REPO_PROVIDER` 切換）。
+3. **[config.py](config.py)**：負責環境變數的**動態載入（支援自訂檔案路徑）**與自動清理。
+4. **[github_fetcher.py](github_fetcher.py)**：GitHub REST API 串接模組。
+5. **[gitlab_fetcher.py](gitlab_fetcher.py)**：GitLab REST API 串接模組（採用與 GitHubFetcher 一致的直連設計）。
+6. **[llm_client.py](llm_client.py)**：直連 Google Gemini API。
+7. **[analyzer.py](analyzer.py)**：Prompts 設計與分析核心。
+8. **[reporter.py](reporter.py)**：Markdown 報告渲染與 Webhook 通知發送。
+9. **[main.py](main.py)**：主程式入口，支援 `--env <路徑>` 載入。
 
 ---
 
