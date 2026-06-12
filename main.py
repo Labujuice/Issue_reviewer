@@ -170,12 +170,17 @@ def main():
     logger.info(f"使用 Gemini 模型: {Config.GEMINI_MODEL}")
     try:
         analyzer = IssueAnalyzer()
-        for issue in issues:
+        for idx, issue in enumerate(issues):
+            if idx > 0:
+                import time
+                time.sleep(2.5) # Sleep to avoid Gemini 429 Rate Limit (15 RPM for free tier)
             result = analyzer.analyze_issue(issue)
             analyses.append(result)
         
         # Cross-issue analysis
         if len(analyses) > 1:
+            import time
+            time.sleep(2.5) # Sleep to avoid Gemini 429 Rate Limit
             relationships = analyzer.analyze_relationships(analyses)
     except Exception as e:
         logger.error(f"LLM 分析階段發生錯誤: {str(e)}")
@@ -183,7 +188,44 @@ def main():
 
     # 3. Generate Report
     logger.info("正在生成 Markdown 報告...")
-    markdown_report = ReportGenerator.generate_markdown(analyses, relationships)
+    repo_name = ""
+    repo_url = ""
+    
+    if args.mock:
+        repo_name = "PX4/px4_msgs"
+        repo_url = "https://github.com/PX4/px4_msgs"
+    else:
+        provider = Config.REPO_PROVIDER
+        if provider == "github":
+            repo_name = Config.GITHUB_REPO
+            repo_url = f"{Config.GITHUB_API_URL.replace('api.', '')}/{Config.GITHUB_REPO}"
+        elif provider == "gitlab":
+            repo_name = f"GitLab Project ID: {Config.GITLAB_PROJECT_ID}"
+            repo_url = f"{Config.GITLAB_URL}/{Config.GITLAB_PROJECT_ID}"
+            
+    # Try to extract a more precise URL from fetched issues if possible
+    if issues:
+        first_issue = issues[0]
+        web_url = first_issue.get("web_url", "")
+        if web_url:
+            if "issues/" in web_url:
+                repo_url = web_url.split("/issues/")[0]
+            elif "-/issues/" in web_url:
+                repo_url = web_url.split("/-/issues/")[0]
+            elif "/issues" in web_url:
+                repo_url = web_url.split("/issues")[0]
+                
+            # For GitLab project ID, extract path from url for a nicer project name if possible
+            if not args.mock and Config.REPO_PROVIDER == "gitlab":
+                try:
+                    domain_split = repo_url.split("://", 1)[-1]
+                    path_parts = domain_split.split("/", 1)
+                    if len(path_parts) > 1:
+                        repo_name = path_parts[1].rstrip("/")
+                except Exception:
+                    pass
+
+    markdown_report = ReportGenerator.generate_markdown(analyses, relationships, repo_name, repo_url)
     
     # Write to file
     try:
