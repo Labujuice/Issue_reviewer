@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Configuration / Secrets
+.env
+.env.local
+.env.*.local
+
+# Project Reports / Logs
+report.md
+mock_report.md
+*.log
+
+# IDEs
+.vscode/
+.idea/
