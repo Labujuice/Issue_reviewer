@@ -221,13 +221,34 @@ def main():
     # 1. Load data
     issues = []
     if args.mock:
-        logger.info("模式: [測試 Mock 數據]")
-        issues = MOCK_ISSUES
-        if args.issue_id:
-            issues = [i for i in issues if i["id"] == args.issue_id]
-            if not issues:
-                logger.error(f"找不到 Mock Issue ID: {args.issue_id}")
-                sys.exit(1)
+        logger.info("模式: [測試 Mock 數據 (PX4/px4_msgs)]")
+        if check_has_gemini_credentials():
+            logger.info("偵測到已設定 Gemini API Key，將動態從 GitHub 公開專案 PX4/px4_msgs 抓取最新 5 個 Issues 進行分析...")
+            mock_fetcher = GitHubFetcher(
+                repo="PX4/px4_msgs",
+                token=Config.GITHUB_TOKEN,
+                api_url=Config.GITHUB_API_URL
+            )
+            try:
+                raw_issues = mock_fetcher.fetch_issues()
+                issues = raw_issues[:5]
+                if args.issue_id:
+                    issues = [i for i in raw_issues if i["id"] == args.issue_id]
+                    if not issues:
+                        logger.error(f"在抓取的 Issues 中找不到 Mock Issue ID: {args.issue_id}")
+                        sys.exit(1)
+            except Exception as e:
+                logger.error(f"從 PX4/px4_msgs 抓取資料時發生錯誤: {str(e)}")
+                logger.info("將退回使用預載的靜態 Mock 數據進行測試...")
+                issues = MOCK_ISSUES
+        else:
+            logger.info("未設定 Gemini API Key，將使用內建靜態 Mock 數據...")
+            issues = MOCK_ISSUES
+            if args.issue_id:
+                issues = [i for i in issues if i["id"] == args.issue_id]
+                if not issues:
+                    logger.error(f"找不到 Mock Issue ID: {args.issue_id}")
+                    sys.exit(1)
     else:
         try:
             Config.validate()
