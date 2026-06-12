@@ -16,185 +16,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Mock data for out-of-the-box testing
-MOCK_ISSUES = [
-    {
-        "id": 101,
-        "title": "API Gateway 在高負載下發生記憶體洩漏 (Memory Leak)",
-        "description": "生產環境的 Pod 頻繁被 OOM-killer 終止。記憶體用量隨著請求量呈線性增長。懷疑是最近合併的日誌解析器造成的。",
-        "web_url": "https://github.com/mock/project/issues/101",
-        "author": "dev_alice",
-        "assignees": ["dev_bob"],
-        "labels": ["Bug", "Severity::Critical", "Production"],
-        "state": "open",
-        "created_at": "2026-06-10T10:00:00Z",
-        "updated_at": "2026-06-12T15:30:00Z",
-        "discussions": [
-            [
-                {
-                    "author": "dev_bob",
-                    "created_at": "2026-06-10T11:00:00Z",
-                    "body": "我分析了 heap dump，記憶體被大量的日誌快取字串 (log cache strings) 佔滿。日誌解析模組內部使用了靜態快取且沒有設定 TTL。",
-                    "is_system": False
-                },
-                {
-                    "author": "arch_carol",
-                    "created_at": "2026-06-10T12:00:00Z",
-                    "body": "我不建議只是加 TTL。高併發下 TTL 太長一樣會爆記憶體，太短又沒快取效果。我們應該直接重構，移除這個靜態快取，改用串流解析器。",
-                    "is_system": False
-                },
-                {
-                    "author": "dev_bob",
-                    "created_at": "2026-06-11T09:00:00Z",
-                    "body": "可是重構日誌模組需要至少 5 個工作天，我們現在生產環境天天在掛。我反對直接重構，先加一個短 TTL 快速上線止血才是對的。",
-                    "is_system": False
-                },
-                {
-                    "author": "arch_carol",
-                    "created_at": "2026-06-11T10:30:00Z",
-                    "body": "加 TTL 會帶來更難追蹤的 Race Condition 隱患。我強烈不同意這個權宜之計，這是在埋地雷。",
-                    "is_system": False
-                }
-            ]
-        ]
-    },
-    {
-        "id": 102,
-        "title": "資料庫線上 Migration 腳本在 Replica 節點上超時失敗",
-        "description": "在執行 `v2_4_0__user_index.sql` 時，因為鎖定超時 (Lock Wait Timeout) 導致遷移失敗。這影響了我們本週的部署計劃。",
-        "web_url": "https://github.com/mock/project/issues/102",
-        "author": "ops_dave",
-        "assignees": [],
-        "labels": ["Deployment", "Severity::High"],
-        "state": "open",
-        "created_at": "2026-06-11T08:00:00Z",
-        "updated_at": "2026-06-12T12:00:00Z",
-        "discussions": [
-            [
-                {
-                    "author": "dev_bob",
-                    "created_at": "2026-06-11T14:00:00Z",
-                    "body": "這是因為 `users` 資料表有 5000 萬筆資料，建立索引時沒有使用 `CONCURRENTLY` (我們是用 PostgreSQL 嗎？)，導致鎖表。",
-                    "is_system": False
-                },
-                {
-                    "author": "ops_dave",
-                    "created_at": "2026-06-11T14:30:00Z",
-                    "body": "我們在 AWS RDS Aurora PostgreSQL 上跑。@dev_bob 說得對，必須用 CONCURRENTLY 建立索引，否則會鎖定寫入。但我發現遷移框架 Flyway 預設不支援 concurrent 模式，會報錯。這是一個 Block 點。",
-                    "is_system": False
-                }
-            ]
-        ]
-    },
-    {
-        "id": 103,
-        "title": "更新 API Gateway 日誌設定文件",
-        "description": "我們需要針對 API Gateway 的日誌解析器設定進行說明文件的更新，特別是 cache 相關設定參數。",
-        "web_url": "https://github.com/mock/project/issues/103",
-        "author": "writer_eve",
-        "assignees": ["writer_eve"],
-        "labels": ["Documentation", "Severity::Low"],
-        "state": "open",
-        "created_at": "2026-06-12T09:00:00Z",
-        "updated_at": "2026-06-12T14:00:00Z",
-        "discussions": [
-            [
-                {
-                    "author": "arch_carol",
-                    "created_at": "2026-06-12T14:10:00Z",
-                    "body": "慢著，如果 Issue #101 決定要徹底重構日誌模組並移除 cache 快取，那這些設定值將會被廢棄。建議先等 #101 決定後，再行撰寫文件，避免做白工。",
-                    "is_system": False
-                }
-            ]
-        ]
-    }
-]
-
-# Mock LLM analysis results for quick demo when Gemini API Key is missing
-MOCK_ANALYSIS_RESULTS = [
-    {
-        "id": 101,
-        "title": "API Gateway 在高負載下發生記憶體洩漏 (Memory Leak)",
-        "web_url": "https://github.com/mock/project/issues/101",
-        "summary": "生產環境 API Gateway Pod 因記憶體洩漏頻繁 OOM 終止，問題源於新版日誌解析器的靜態快取無 TTL 限制。",
-        "priority": {
-            "level": "Critical",
-            "reason": "影響生產環境穩定性，導致服務中斷 (OOM-killed)。"
-        },
-        "blockers": [
-            "生產環境 Pod 頻繁重啟，導致連線中斷。"
-        ],
-        "conflicts": [
-            {
-                "description": "日誌快取問題修補方案的分歧 (權宜之計 vs 根本重構)",
-                "parties": ["dev_bob", "arch_carol"],
-                "evidence": "@dev_bob 建議加短 TTL 快上線止血；@arch_carol 反對並主張花 5 天重構，認為加 TTL 會引入 Race Condition 隱患。"
-            }
-        ],
-        "actions": [
-            {
-                "task": "由架構師與開發人員召開 15 分鐘會議，決定是要重構還是先做熱修復（加 TTL + 監控）。",
-                "suggested_assignee": "arch_carol"
-            },
-            {
-                "task": "實施臨時的 Pod 記憶體上限調升以減緩重啟頻率。",
-                "suggested_assignee": "dev_bob"
-            }
-        ]
-    },
-    {
-        "id": 102,
-        "title": "資料庫線上 Migration 腳本在 Replica 節點上超時失敗",
-        "web_url": "https://github.com/mock/project/issues/102",
-        "summary": "Flyway 執行 v2_4_0 遷移時因鎖定超時失敗，主因是 5000 萬筆的 users 表在建立索引時未採用 CONCURRENTLY 模式且 Flyway 預設有限制。",
-        "priority": {
-            "level": "High",
-            "reason": "阻礙了本週的正常部署時程。"
-        },
-        "blockers": [
-            "Flyway 遷移框架預設不支援 PostgreSQL 的 CONCURRENTLY 索引建立模式。"
-        ],
-        "conflicts": [],
-        "actions": [
-            {
-                "task": "研究並設定 Flyway 允許非交易式的 Migration 或是手動在資料庫背景建立索引後，再標記該 migration 為成功。",
-                "suggested_assignee": "ops_dave"
-            }
-        ]
-    },
-    {
-        "id": 103,
-        "title": "更新 API Gateway 日誌設定文件",
-        "web_url": "https://github.com/mock/project/issues/103",
-        "summary": "更新 Gateway 快取設定文件的任務，目前正等待 #101 的架構方向定案。",
-        "priority": {
-            "level": "Low",
-            "reason": "屬於文件更新，且當前依賴的前置工作尚未定案。"
-        },
-        "blockers": [
-            "等待 #101 API Gateway 記憶體洩漏之架構決定，以防文件設定值過期廢棄。"
-        ],
-        "conflicts": [],
-        "actions": [
-            {
-                "task": "暫停此工作，待 #101 完成後重新指派。",
-                "suggested_assignee": "writer_eve"
-            }
-        ]
-    }
-]
-
-MOCK_RELATIONSHIPS = {
-    "duplicates": [],
-    "relations": [
-        {
-            "issues": [101, 103],
-            "type": "Blocker",
-            "reason": "#101 的日誌模組重構決策直接阻礙了 #103 日誌設定文件的撰寫，避免產生廢棄設定的說明。"
-        }
-    ]
-}
-
 def check_has_gemini_credentials() -> bool:
     """Check if Gemini API Key is set in configuration."""
     return bool(Config.GEMINI_API_KEY)
@@ -206,7 +27,7 @@ def main():
     parser.add_argument("--output", type=str, default="report.md", help="報告輸出 Markdown 檔案路徑")
     parser.add_argument("--slack", action="store_true", help="是否發送 Slack Webhook 通知")
     parser.add_argument("--discord", action="store_true", help="是否發送 Discord Webhook 通知")
-    parser.add_argument("--mock", action="store_true", help="使用 Mock 測試數據（無需連接 Repo）")
+    parser.add_argument("--mock", action="store_true", help="使用線上 PX4/px4_msgs 公開專案進行測試分析（需有 Gemini API Key）")
     parser.add_argument("-e", "--env", type=str, default=None, help="指定載入的 .env 檔案路徑 (例如: .env.gitlab)")
     
     args = parser.parse_args()
@@ -218,37 +39,33 @@ def main():
     logger.info("      Issue Analyzer Agent 啟動")
     logger.info("========================================")
 
+    # Validate Gemini credentials (always required now)
+    if not check_has_gemini_credentials():
+        logger.error("錯誤: 未偵測到 GEMINI_API_KEY 設定。")
+        logger.error("請確認您的環境變數或 .env 檔案中已設定 GEMINI_API_KEY。")
+        sys.exit(1)
+
     # 1. Load data
     issues = []
     if args.mock:
-        logger.info("模式: [測試 Mock 數據 (PX4/px4_msgs)]")
-        if check_has_gemini_credentials():
-            logger.info("偵測到已設定 Gemini API Key，將動態從 GitHub 公開專案 PX4/px4_msgs 抓取最新 5 個 Issues 進行分析...")
-            mock_fetcher = GitHubFetcher(
-                repo="PX4/px4_msgs",
-                token=Config.GITHUB_TOKEN,
-                api_url=Config.GITHUB_API_URL
-            )
-            try:
-                raw_issues = mock_fetcher.fetch_issues()
-                issues = raw_issues[:5]
-                if args.issue_id:
-                    issues = [i for i in raw_issues if i["id"] == args.issue_id]
-                    if not issues:
-                        logger.error(f"在抓取的 Issues 中找不到 Mock Issue ID: {args.issue_id}")
-                        sys.exit(1)
-            except Exception as e:
-                logger.error(f"從 PX4/px4_msgs 抓取資料時發生錯誤: {str(e)}")
-                logger.info("將退回使用預載的靜態 Mock 數據進行測試...")
-                issues = MOCK_ISSUES
-        else:
-            logger.info("未設定 Gemini API Key，將使用內建靜態 Mock 數據...")
-            issues = MOCK_ISSUES
+        logger.info("模式: [公開專案測試 (PX4/px4_msgs)]")
+        logger.info("正在從 GitHub 公開專案 PX4/px4_msgs 抓取最新 5 個 Issues 作為測試資料...")
+        fetcher = GitHubFetcher(
+            repo="PX4/px4_msgs",
+            token=Config.GITHUB_TOKEN,
+            api_url=Config.GITHUB_API_URL
+        )
+        try:
+            raw_issues = fetcher.fetch_issues()
+            issues = raw_issues[:5]  # Limit to 5 issues to save tokens and prevent API limit issues
             if args.issue_id:
-                issues = [i for i in issues if i["id"] == args.issue_id]
+                issues = [i for i in raw_issues if i["id"] == args.issue_id]
                 if not issues:
-                    logger.error(f"找不到 Mock Issue ID: {args.issue_id}")
+                    logger.error(f"在抓取的 Issues 中找不到指定測試的 Issue ID: {args.issue_id}")
                     sys.exit(1)
+        except Exception as e:
+            logger.error(f"從 PX4/px4_msgs 抓取測試資料時發生錯誤: {str(e)}")
+            sys.exit(1)
     else:
         try:
             Config.validate()
@@ -350,28 +167,19 @@ def main():
     analyses = []
     relationships = {"duplicates": [], "relations": []}
     
-    # Check if we should use mock LLM responses
-    use_mock_llm = args.mock and not check_has_gemini_credentials()
-    
-    if use_mock_llm:
-        logger.info("偵測到無 Gemini API Key 設定。為了讓您快速體驗，將使用預先產出的 Mock LLM 分析結果。")
-        issue_ids = {i["id"] for i in issues}
-        analyses = [a for a in MOCK_ANALYSIS_RESULTS if a["id"] in issue_ids]
-        relationships = MOCK_RELATIONSHIPS
-    else:
-        logger.info(f"使用 Gemini 模型: {Config.GEMINI_MODEL}")
-        try:
-            analyzer = IssueAnalyzer()
-            for issue in issues:
-                result = analyzer.analyze_issue(issue)
-                analyses.append(result)
-            
-            # Cross-issue analysis
-            if len(analyses) > 1:
-                relationships = analyzer.analyze_relationships(analyses)
-        except Exception as e:
-            logger.error(f"LLM 分析階段發生錯誤: {str(e)}")
-            sys.exit(1)
+    logger.info(f"使用 Gemini 模型: {Config.GEMINI_MODEL}")
+    try:
+        analyzer = IssueAnalyzer()
+        for issue in issues:
+            result = analyzer.analyze_issue(issue)
+            analyses.append(result)
+        
+        # Cross-issue analysis
+        if len(analyses) > 1:
+            relationships = analyzer.analyze_relationships(analyses)
+    except Exception as e:
+        logger.error(f"LLM 分析階段發生錯誤: {str(e)}")
+        sys.exit(1)
 
     # 3. Generate Report
     logger.info("正在生成 Markdown 報告...")
