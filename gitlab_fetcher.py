@@ -36,7 +36,14 @@ class GitLabFetcher:
         response = requests.get(url, headers=self.headers, params=params)
         response.raise_for_status()
         
-        raw_issues = response.json()
+        try:
+            raw_issues = response.json()
+        except ValueError as e:
+            raise ValueError(
+                f"Failed to parse JSON response from GitLab (URL: {url}). "
+                f"Expected JSON but received Content-Type: '{response.headers.get('Content-Type', 'unknown')}'. "
+                f"Please verify your GITLAB_URL/token configuration."
+            ) from e
         result = []
         
         for issue_data in raw_issues:
@@ -66,7 +73,14 @@ class GitLabFetcher:
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
         
-        discussions_data = response.json()
+        try:
+            discussions_data = response.json()
+        except ValueError as e:
+            raise ValueError(
+                f"Failed to parse JSON response for discussions (URL: {url}). "
+                f"Expected JSON but received Content-Type: '{response.headers.get('Content-Type', 'unknown')}'. "
+                f"Please verify your GITLAB_URL/token configuration."
+            ) from e
         threads = []
         
         for disc in discussions_data:

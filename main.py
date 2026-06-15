@@ -94,7 +94,13 @@ def main():
                     
                     response = requests.get(url, headers=headers)
                     response.raise_for_status()
-                    issue_data = response.json()
+                    try:
+                        issue_data = response.json()
+                    except ValueError as e:
+                        raise ValueError(
+                            f"Expected JSON response from GitHub (URL: {url}) but received Content-Type: "
+                            f"'{response.headers.get('Content-Type', 'unknown')}'. Please verify your GITHUB_API_URL/token."
+                        ) from e
                     
                     discussions = fetcher.fetch_comments(args.issue_id)
                     issues = [{
@@ -134,7 +140,13 @@ def main():
                     
                     response = requests.get(url, headers=headers)
                     response.raise_for_status()
-                    issue_data = response.json()
+                    try:
+                        issue_data = response.json()
+                    except ValueError as e:
+                        raise ValueError(
+                            f"Expected JSON response from GitLab (URL: {url}) but received Content-Type: "
+                            f"'{response.headers.get('Content-Type', 'unknown')}'. Please verify your GITLAB_URL/token."
+                        ) from e
                     
                     discussions = fetcher.fetch_discussions(args.issue_id)
                     issues = [{
