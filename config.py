@@ -64,6 +64,9 @@ class Config:
     SLACK_WEBHOOK_URL = ""
     DISCORD_WEBHOOK_URL = ""
 
+    # Output Configuration
+    OUTPUT_FILE = "report.md"
+
     @classmethod
     def load(cls, env_path: str = None):
         """Load environmental variables dynamically from a specific .env file path."""
@@ -92,6 +95,9 @@ class Config:
         # Webhooks
         cls.SLACK_WEBHOOK_URL = get_clean_env("SLACK_WEBHOOK_URL", "")
         cls.DISCORD_WEBHOOK_URL = get_clean_env("DISCORD_WEBHOOK_URL", "")
+
+        # Output File
+        cls.OUTPUT_FILE = get_clean_env("OUTPUT_FILE", "report.md")
 
     @classmethod
     def validate(cls):
