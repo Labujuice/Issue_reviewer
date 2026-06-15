@@ -24,7 +24,7 @@ def main():
     parser = argparse.ArgumentParser(description="Git/GitHub/GitLab Issue Analyzer Agent")
     parser.add_argument("--days", type=int, help="只分析過去 N 天更新的 Issues")
     parser.add_argument("--issue-id", type=int, help="指定分析單一 Issue ID")
-    parser.add_argument("--output", type=str, default="report.md", help="報告輸出 Markdown 檔案路徑")
+    parser.add_argument("--output", type=str, default=None, help="報告輸出 Markdown 檔案路徑 (若未指定，將使用 .env 中的 OUTPUT_FILE 設定)")
     parser.add_argument("--slack", action="store_true", help="是否發送 Slack Webhook 通知")
     parser.add_argument("--discord", action="store_true", help="是否發送 Discord Webhook 通知")
     parser.add_argument("--mock", action="store_true", help="使用線上 PX4/px4_msgs 公開專案進行測試分析（需有 Gemini API Key）")
@@ -34,6 +34,11 @@ def main():
 
     # Load configuration from specified env file
     Config.load(args.env)
+
+    # Resolve output file path: argument overrides .env configuration
+    output_file = args.output if args.output is not None else Config.OUTPUT_FILE
+    if not output_file:
+        output_file = "report.md"
 
     logger.info("========================================")
     logger.info("      Issue Analyzer Agent 啟動")
@@ -241,9 +246,14 @@ def main():
     
     # Write to file
     try:
-        with open(args.output, "w", encoding="utf-8") as f:
+        import os
+        parent_dir = os.path.dirname(output_file)
+        if parent_dir:
+            os.makedirs(parent_dir, exist_ok=True)
+            
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(markdown_report)
-        logger.info(f"報告已成功寫入至: {args.output}")
+        logger.info(f"報告已成功寫入至: {output_file}")
     except Exception as e:
         logger.error(f"寫入報告檔案時發生錯誤: {str(e)}")
 
@@ -255,7 +265,7 @@ def main():
                           f"📋 共分析了 *{len(analyses)}* 個 Issues。\n" \
                           f"🛑 發現 *{sum(len(a.get('blockers', [])) for a in analyses)}* 個阻礙點，" \
                           f"⚖️ *{sum(1 for a in analyses if len(a.get('conflicts', [])) > 0)}* 個潛在技術分歧。\n" \
-                          f"詳細報告已儲存在 `{args.output}` 中。"
+                          f"詳細報告已儲存在 `{output_file}` 中。"
             ReportGenerator.send_webhook_notification(Config.SLACK_WEBHOOK_URL, summary_msg, "slack")
         else:
             logger.warning("未設定 SLACK_WEBHOOK_URL，跳過發送。")
@@ -267,7 +277,7 @@ def main():
                           f"共分析了 **{len(analyses)}** 個 Issues。\n" \
                           f"偵測到阻礙點: {sum(len(a.get('blockers', [])) for a in analyses)} 個 | " \
                           f"技術分歧: {sum(1 for a in analyses if len(a.get('conflicts', [])) > 0)} 個。\n" \
-                          f"詳細報告請查看 `{args.output}`。"
+                          f"詳細報告請查看 `{output_file}`。"
             ReportGenerator.send_webhook_notification(Config.DISCORD_WEBHOOK_URL, summary_msg, "discord")
         else:
             logger.warning("未設定 DISCORD_WEBHOOK_URL，跳過發送。")
