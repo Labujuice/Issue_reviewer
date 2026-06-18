@@ -19,12 +19,14 @@ class ReportGenerator:
         conflicts_count = sum(1 for a in analyses if len(a.get("conflicts", [])) > 0)
         
         md = []
-        md.append(f"# 🤖 Issue 智能分析報告")
         if repo_name:
             if repo_url:
-                md.append(f"> **分析專案**: [{repo_name}]({repo_url})")
+                md.append(f"# 🤖 Issue 智能分析報告 - [{repo_name}]({repo_url})")
             else:
-                md.append(f"> **分析專案**: `{repo_name}`")
+                md.append(f"# 🤖 Issue 智能分析報告 - {repo_name}")
+        else:
+            md.append(f"# 🤖 Issue 智能分析報告")
+            
         md.append(f"> **報告產出時間**: `{now_str}` | **分析 Issue 總數**: `{total_issues}` 個\n")
         
         # Dashboard Cards
