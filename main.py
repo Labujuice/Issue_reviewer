@@ -40,6 +40,18 @@ def main():
     if not output_file:
         output_file = "report.md"
 
+    # Expand date and time placeholders
+    import datetime
+    now = datetime.datetime.now()
+    date_str = now.strftime("%Y%m%d")
+    time_str = now.strftime("%H%M%S")
+    
+    # Case-insensitive replacements for common date/time placeholders
+    for p in ["{date}", "{DATE}", "{YYYYMMDD}", "${date}", "${DATE}", "${YYYYMMDD}", "$DATE", "$YYYYMMDD"]:
+        output_file = output_file.replace(p, date_str)
+    for p in ["{time}", "{TIME}", "{HHMMSS}", "${time}", "${TIME}", "${HHMMSS}", "$TIME", "$HHMMSS"]:
+        output_file = output_file.replace(p, time_str)
+
     logger.info("========================================")
     logger.info("      Issue Analyzer Agent 啟動")
     logger.info("========================================")
@@ -256,6 +268,16 @@ def main():
         logger.info(f"報告已成功寫入至: {output_file}")
     except Exception as e:
         logger.error(f"寫入報告檔案時發生錯誤: {str(e)}")
+        # Fallback to local directory Report_temp_YYYYMMDD_HHMMSS.md
+        fallback_file = f"Report_temp_{date_str}_{time_str}.md"
+        logger.warning(f"將嘗試將報告寫入至當前目錄備份檔案: {fallback_file}")
+        try:
+            with open(fallback_file, "w", encoding="utf-8") as f:
+                f.write(markdown_report)
+            logger.info(f"報告已成功寫入至臨時備份檔案: {fallback_file}")
+            output_file = fallback_file
+        except Exception as fallback_err:
+            logger.error(f"寫入臨時備份檔案也失敗: {str(fallback_err)}")
 
     # 4. Send Webhooks
     if args.slack:
